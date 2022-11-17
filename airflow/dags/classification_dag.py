@@ -1,14 +1,31 @@
+import os
+import yaml
 import airflow
 import pandas as pd
 
 from files import Files
+from dataset import Dataset
 from airflow.operators.python import PythonOperator
 
 def generate_images_lists():
     pd.DataFrame(data=Files.get_files_list('data/source/CT/'), columns=['image_name']).to_csv('data/source/CT.csv', index=False)
     pd.DataFrame(data=Files.get_files_list('data/source/NonCT/'), columns=['image_name']).to_csv('data/source/NonCT.csv', index=False)
 def prepare_classification_datasets():
-    pass
+    parameters = yaml.safe_load(open('data/parameters.yaml'))
+    ct = Dataset.shuffle_list('data/source/CT.csv')
+    non_ct = Dataset.shuffle_list('data/source/NonCT.csv')
+    data = []
+    for i in range(parameters['classification']['n_samples']):
+        if i % 2 == 0:
+            data.append([os.path.join('data/source/NonCT', non_ct.pop()), 0])
+        else:
+            data.append([os.path.join('data/source/CT', ct.pop()), 1])
+        if len(non_ct) == 0 or len(ct) == 0:
+            break
+    df = pd.DataFrame(data, columns=['image_name', 'class'])
+    train_df, test_df = Dataset.split_dataset(df, parameters['classification']['test_size'])
+    train_df.to_csv('data/classification/train_df.csv', index=False)
+    test_df.to_csv('data/classification/test_df.csv', index=False)
 def load_classification_datasets():
     pass
 def augment_classification_datasets():
