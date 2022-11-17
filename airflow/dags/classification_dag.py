@@ -1,9 +1,12 @@
 import airflow
+import pandas as pd
 
+from files import Files
 from airflow.operators.python import PythonOperator
 
 def generate_images_lists():
-    pass
+    pd.DataFrame(data=Files.get_files_list('data/source/CT/'), columns=['image_name']).to_csv('data/source/CT.csv', index=False)
+    pd.DataFrame(data=Files.get_files_list('data/source/NonCT/'), columns=['image_name']).to_csv('data/source/NonCT.csv', index=False)
 def prepare_classification_datasets():
     pass
 def load_classification_datasets():
