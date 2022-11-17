@@ -20,7 +20,7 @@ class Files:
     @staticmethod
     def update_images_names(df):
         for i in range(len(df)):
-            df['image_name'][i] = f"{Files.__get_file_name(df['image_name'][i])}.png"
+            df['image_name'][i] = f"{Files.get_file_name(df['image_name'][i])}.png"
         return df
     @staticmethod
     def save_images(images, df, path):
@@ -29,5 +29,5 @@ class Files:
             cv2.imwrite(f"{path}{df['image_name'][i]}", image)
             i+=1
     @staticmethod
-    def __get_file_name(path):
+    def get_file_name(path):
         return os.path.splitext(os.path.basename(path))[0]

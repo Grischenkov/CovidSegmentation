@@ -1,4 +1,5 @@
 import os
+import cv2
 import yaml
 import airflow
 import pandas as pd
@@ -29,20 +30,28 @@ def prepare_classification_datasets():
 def load_classification_datasets():
     train_df = pd.read_csv('data/classification/train_df.csv')
     test_df = pd.read_csv('data/classification/test_df.csv')
-
     train_images = Files.load_images(train_df)
     test_images = Files.load_images(test_df)
-    
     train_df = Files.update_images_names(train_df)
     test_df = Files.update_images_names(test_df)
-    
     train_df.to_csv('data/classification/train_df.csv', index=False)
     test_df.to_csv('data/classification/test_df.csv', index=False)
-    
     Files.save_images(train_images, train_df, 'data/classification/train/')
     Files.save_images(test_images, test_df, 'data/classification/test/')
 def augment_classification_datasets():
-    pass
+    params = yaml.safe_load(open('data/parameters.yaml'))
+    if params['classification']['use_augmentation'] == False:
+        return
+    train_df = pd.read_csv('data/classification/train_df.csv')
+    train_images = Files.load_images(train_df, 'data/classification/train/')
+    size = len(train_images)
+    for i in range(size):
+        (h, w) = train_images[i].shape[:2]
+        for j in range(1, 5):
+            train_images.append(cv2.warpAffine(train_images[i], cv2.getRotationMatrix2D((w / 2, h / 2), 45 * j, 1.0), (w, h)))
+            train_df = train_df.append({'image_name':f"{Files.get_file_name(train_df['image_name'][i])}_{45 * j}.png", 'class':train_df['class'][i]}, ignore_index=True)
+    train_df.to_csv('data/classification/train_df.csv', index=False)
+    Files.save_images(train_images, train_df, 'data/classification/train/')
 def generate_classification_datasets():
     pass
 def train_classification_model():
