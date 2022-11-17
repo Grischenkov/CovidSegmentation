@@ -27,7 +27,20 @@ def prepare_classification_datasets():
     train_df.to_csv('data/classification/train_df.csv', index=False)
     test_df.to_csv('data/classification/test_df.csv', index=False)
 def load_classification_datasets():
-    pass
+    train_df = pd.read_csv('data/classification/train_df.csv')
+    test_df = pd.read_csv('data/classification/test_df.csv')
+
+    train_images = Files.load_images(train_df)
+    test_images = Files.load_images(test_df)
+    
+    train_df = Files.update_images_names(train_df)
+    test_df = Files.update_images_names(test_df)
+    
+    train_df.to_csv('data/classification/train_df.csv', index=False)
+    test_df.to_csv('data/classification/test_df.csv', index=False)
+    
+    Files.save_images(train_images, train_df, 'data/classification/train/')
+    Files.save_images(test_images, test_df, 'data/classification/test/')
 def augment_classification_datasets():
     pass
 def generate_classification_datasets():
