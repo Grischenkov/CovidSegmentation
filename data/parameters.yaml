@@ -1,0 +1,13 @@
+classification:
+  experiment_name: Keras_ResNet50_v1_2
+  model_name: Keras_ResNet50_v1
+  use_augmentation: False
+  n_samples: 1492
+  test_size: 0.3
+  batch: 1
+  epochs: 1
+  shuffle: True
+  learning_rate: 0.0001
+segmentation:
+  n_samples: 5
+  test_size: 0.3
