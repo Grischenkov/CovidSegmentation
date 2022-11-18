@@ -1,6 +1,7 @@
 import os
 import yaml
 import airflow
+import numpy as np
 import pandas as pd
 
 from files import Files
@@ -19,7 +20,7 @@ def prepare_segmentation_datasets():
     for i in range(parameters['segmentation']['n_samples']):
         name = ct.pop()
         ct_images.append([os.path.join('data/source/CT', name)])
-        masks_images.append([os.path.join('data/source/MASKS', name)])
+        masks_images.append([os.path.join('data/source/MASK', name)])
         if len(ct) == 0:
             break
     ct_df = pd.DataFrame(ct_images, columns=['image_name'])
@@ -31,9 +32,18 @@ def prepare_segmentation_datasets():
     masks_train_df.to_csv('data/segmentation/masks_train_df.csv', index=False)
     masks_test_df.to_csv('data/segmentation/masks_test_df.csv', index=False)
 def load_segmentation_datasets():
-    pass
-def generate_segmentation_datasets():
-    pass
+    ct_train_df = pd.read_csv('data/segmentation/ct_train_df.csv') 
+    ct_test_df = pd.read_csv('data/segmentation/ct_test_df.csv')
+    masks_train_df = pd.read_csv('data/segmentation/masks_train_df.csv')
+    masks_test_df = pd.read_csv('data/segmentation/masks_test_df.csv')
+    X_train = np.array(Files.load_images(ct_train_df))
+    Y_train = np.array(Files.load_images(masks_train_df))
+    Files.save_npy('data/segmentation/train/X_train.npy', X_train)
+    Files.save_npy('data/segmentation/train/Y_train.npy', Y_train)
+    X_test = np.array(Files.load_images(ct_test_df))
+    Y_test = np.array(Files.load_images(masks_test_df))
+    Files.save_npy('data/segmentation/test/X_test.npy', X_test)
+    Files.save_npy('data/segmentation/test/Y_test.npy', Y_test)
 def train_segmentation_model():
     pass
 
@@ -58,12 +68,8 @@ with airflow.DAG(
         task_id='load_datasets',
         python_callable=load_segmentation_datasets,
     )
-    GenerateClassificationDatasets = PythonOperator(
-        task_id='generate_datasets',
-        python_callable=generate_segmentation_datasets,
-    )
     TrainClassificationModel = PythonOperator (
         task_id='train_model',
         python_callable=train_segmentation_model,
     )
-    GenerateImagesLists >> PrepareClassificationDatasets >> LoadClassificationDatasets >> GenerateClassificationDatasets >> TrainClassificationModel
+    GenerateImagesLists >> PrepareClassificationDatasets >> LoadClassificationDatasets >> TrainClassificationModel
