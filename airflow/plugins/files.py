@@ -19,6 +19,17 @@ class Files:
             result.append(image)
         return result
     @staticmethod
+    def load_images_with_labels(path, df):
+        images = []
+        classes = []
+        for i in range(len(df)):
+            image = cv2.imread(f"{path}{df['image_name'][i]}", cv2.IMREAD_GRAYSCALE)
+            images.append(image)
+            classes.append(df['class'][i])
+        images = np.array(images)
+        classes = np.array(classes)
+        return (images, classes)
+    @staticmethod
     def update_images_names(df):
         for i in range(len(df)):
             df['image_name'][i] = f"{Files.get_file_name(df['image_name'][i])}.png"

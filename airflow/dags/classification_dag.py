@@ -62,29 +62,12 @@ def augment_classification_datasets():
     train_df.to_csv('data/classification/train_df.csv', index=False)
     Files.save_images(train_images, train_df, 'data/classification/train/')
 def generate_classification_datasets():
-    train_df = pd.read_csv('data/classification/train_df.csv')
-    X_train = []
-    Y_train = []
-    for i in range(len(train_df)):
-        image = cv2.imread(f"data/classification/train/{train_df['image_name'][i]}", cv2.IMREAD_GRAYSCALE)
-        X_train.append(image)
-        Y_train.append(train_df['class'][i])
-    X_train = np.array(X_train)
-    Y_train = np.array(Y_train)
+    X_train, Y_train = Files.load_images_with_labels('data/classification/train/', pd.read_csv('data/classification/train_df.csv'))
     Files.save_npy('data/classification/train/X_train.npy', X_train)
     Files.save_npy('data/classification/train/Y_train.npy', Y_train)
-    test_df = pd.read_csv('data/classification/test_df.csv')
-    X_test = []
-    Y_test = []
-    for i in range(len(test_df)):
-        image = cv2.imread(f"data/classification/test/{test_df['image_name'][i]}", cv2.IMREAD_GRAYSCALE)
-        X_test.append(image)
-        Y_test.append(test_df['class'][i])
-    X_test = np.array(X_test)
-    Y_test = np.array(Y_test)
+    X_test, Y_test = Files.load_images_with_labels('data/classification/test/', pd.read_csv('data/classification/test_df.csv'))
     Files.save_npy('data/classification/test/X_test.npy', X_test)
-    Files.save_npy('data/classification/test/Y_test.npy', Y_test)
-    
+    Files.save_npy('data/classification/test/Y_test.npy', Y_test)   
 def train_classification_model():
     parameters = yaml.safe_load(open('data/parameters.yaml'))
     mlflow.set_tracking_uri('http://host.docker.internal:5000')
@@ -103,6 +86,8 @@ def train_classification_model():
             loss=tf.keras.losses.SparseCategoricalCrossentropy(), 
             metrics=['sparse_categorical_accuracy'])
 
+    print(model.optimizer.__dict__)
+
     with mlflow.start_run(run_name=parameters['classification']['experiment_name']):
         mlflow.log_param('augmentation', parameters['classification']['use_augmentation'])
         mlflow.log_param('n_samples', parameters['classification']['n_samples'])
@@ -110,7 +95,7 @@ def train_classification_model():
         mlflow.log_param('epochs', parameters['classification']['epochs'])
         mlflow.log_param('batch', parameters['classification']['batch'])
         mlflow.log_param('shuffle', parameters['classification']['shuffle'])
-        mlflow.log_param('optimizer', model.optimizer._name)
+        mlflow.log_param('optimizer', model.optimizer.name)
         mlflow.log_param('learning_rate', parameters['classification']['learning_rate'])
         
         history = model.fit(train_ds, epochs=parameters['classification']['epochs'], shuffle=parameters['classification']['shuffle'])
@@ -148,7 +133,15 @@ def train_classification_model():
         
         mlflow.keras.log_model(keras_model=model, artifact_path='classification_models')
         mlflow.end_run()
-
+def clear_classification_files():
+    os.remove('data/source/CT.csv')
+    os.remove('data/source/NonCT.csv')
+    os.remove('data/classification/test_df.csv')
+    os.remove('data/classification/train_df.csv')
+    for path in os.listdir('data/classification/test/'):
+        os.remove(f'data/classification/test/{path}')
+    for path in os.listdir('data/classification/train/'):
+        os.remove(f'data/classification/train/{path}')
 with airflow.DAG(
     'classification',
     default_args={
@@ -182,4 +175,8 @@ with airflow.DAG(
         task_id='train_model',
         python_callable=train_classification_model,
     )
-    GenerateImagesLists >> PrepareClassificationDatasets >> LoadClassificationDatasets >> AugmentClassificationDatasets >> GenerateClassificationDatasets >> TrainClassificationModel
+    ClearRunFiles = PythonOperator (
+        task_id='clear_files',
+        python_callable=clear_classification_files,
+    )
+    GenerateImagesLists >> PrepareClassificationDatasets >> LoadClassificationDatasets >> AugmentClassificationDatasets >> GenerateClassificationDatasets >> TrainClassificationModel >> ClearRunFiles
