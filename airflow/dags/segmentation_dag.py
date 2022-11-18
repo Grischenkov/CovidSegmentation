@@ -1,7 +1,10 @@
+import os
+import yaml
 import airflow
 import pandas as pd
 
 from files import Files
+from dataset import Dataset
 
 from airflow.operators.python import PythonOperator
 
@@ -9,7 +12,24 @@ def generate_images_lists():
     pd.DataFrame(data=Files.get_files_list('data/source/CT/'), columns=['image_name']).to_csv('data/source/CT.csv', index=False)
     pd.DataFrame(data=Files.get_files_list('data/source/NonCT/'), columns=['image_name']).to_csv('data/source/NonCT.csv', index=False)
 def prepare_segmentation_datasets():
-    pass
+    parameters = yaml.safe_load(open('data/parameters.yaml'))
+    ct = Dataset.shuffle_list('data/source/CT.csv')
+    ct_images = []
+    masks_images = []
+    for i in range(parameters['segmentation']['n_samples']):
+        name = ct.pop()
+        ct_images.append([os.path.join('data/source/CT', name)])
+        masks_images.append([os.path.join('data/source/MASKS', name)])
+        if len(ct) == 0:
+            break
+    ct_df = pd.DataFrame(ct_images, columns=['image_name'])
+    masks_df = pd.DataFrame(masks_images, columns=['image_name'])
+    ct_train_df, ct_test_df = Dataset.split_dataset(ct_df, parameters['segmentation']['test_size'])
+    masks_train_df, masks_test_df = Dataset.split_dataset(masks_df, parameters['segmentation']['test_size'])
+    ct_train_df.to_csv('data/segmentation/ct_train_df.csv', index=False)
+    ct_test_df.to_csv('data/segmentation/ct_test_df.csv', index=False)
+    masks_train_df.to_csv('data/segmentation/masks_train_df.csv', index=False)
+    masks_test_df.to_csv('data/segmentation/masks_test_df.csv', index=False)
 def load_segmentation_datasets():
     pass
 def generate_segmentation_datasets():
