@@ -1,5 +1,6 @@
 import os
 import cv2
+import numpy as np
 
 class Files:
     @staticmethod
@@ -31,3 +32,11 @@ class Files:
     @staticmethod
     def get_file_name(path):
         return os.path.splitext(os.path.basename(path))[0]
+    @staticmethod
+    def save_npy(file_name, array):
+        with open(file_name, 'wb') as file:
+            np.save(file, array)
+    @staticmethod
+    def load_npy(file_name):
+        with open(file_name, 'rb') as file:
+            return np.load(file)
