@@ -8,51 +8,36 @@ x-airflow-common:
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@airflow-postgres/airflow
-    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@airflow-postgres/airflow
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://admin:admin@airflow-postgres/airflow
-    AIRFLOW__CELERY__BROKER_URL: redis://:@airflow-redis:6379/0
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@postgres/airflow
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://admin:admin@postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
   volumes:
+    - ./data:/opt/airflow/data
     - ./airflow/dags:/opt/airflow/dags
     - ./airflow/logs:/opt/airflow/logs
     - ./airflow/plugins:/opt/airflow/plugins
-    - ./data:/opt/airflow/data
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
-    airflow-redis:
+    redis:
       condition: service_healthy
-    airflow-postgres:
+    postgres:
       condition: service_healthy
 
 services:
-  mlflow-postgres:
-    container_name: mlflow-postgres
-    image: postgres:13
+  postgres:
+    container_name: postgres
+    build: Docker/postgres
     environment:
-      POSTGRES_DB: mlflow
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
-    ports:
-      - "5353:5353"
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "admin", "-d", "mlflow"]
-      interval: 5s
-      retries: 5
-    restart: always
-  
-  airflow-postgres:
-    container_name: airflow-postgres
-    image: postgres:13
-    environment:
-      POSTGRES_DB: airflow
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
+      POSTGRES_MULTIPLE_DATABASES: mlflow, airflow
     ports:
       - "5432:5432"
     volumes:
@@ -62,17 +47,9 @@ services:
       interval: 5s
       retries: 5
     restart: always
-  
-  mlflow-server:
-    container_name: mlflow-server
-    build: Docker/mlflow
-    ports:
-      - "5000:5000"
-    command: mlflow server --host 0.0.0.0 --backend-store-uri postgresql+psycopg2://admin:admin@mlflow-postgres/mlflow
-    restart: always
 
-  airflow-redis:
-    container_name: airflow-redis
+  redis:
+    container_name: redis
     image: redis:latest
     expose:
       - 6379
@@ -82,6 +59,46 @@ services:
       timeout: 30s
       retries: 50
     restart: always
+  
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:8.5.3-ubuntu
+    ports:
+      - "3000:3000"
+  
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v2.36.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./Docker/prometheus/:/etc/prometheus/
+  
+  node-exporter:
+    container_name: node-exporter
+    image: prom/node-exporter:v1.3.1
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude'
+      - '^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
+
+  mlflow-server:
+    container_name: mlflow-server
+    build: Docker/mlflow
+    ports:
+      - "5000:5000"
+    command: mlflow server --host 0.0.0.0 --backend-store-uri postgresql+psycopg2://admin:admin@postgres/mlflow
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   airflow-webserver:
     container_name: airflow-webserver
@@ -247,3 +264,7 @@ services:
 
 volumes:
   postgres-db-volume:
+  # grafana-data:
+  # grafana-configs:
+  # prom-data:
+  # prom-configs:

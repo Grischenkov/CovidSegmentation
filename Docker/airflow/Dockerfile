@@ -8,4 +8,4 @@ RUN sudo apt-get install -y libglib2.0-0
 
 USER airflow
 
-RUN pip install pandas pyyaml opencv-python
+RUN pip install pandas pyyaml opencv-python tensorflow mlflow psycopg2 boto3 scikit-learn matplotlib
