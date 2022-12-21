@@ -5,5 +5,5 @@ def model():
     model = tf.keras.models.Sequential()
     model.add(resNet)
     model.add(tf.keras.layers.Flatten())
-    model.add(tf.keras.layers.Dense(2, activation='softmax'))
+    model.add(tf.keras.layers.Dense(3, activation='softmax'))
     return model
