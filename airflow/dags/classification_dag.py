@@ -20,17 +20,20 @@ from airflow.operators.python import PythonOperator
 def generate_images_lists():
     pd.DataFrame(data=Files.get_files_list('data/source/CT/'), columns=['image_name']).to_csv('data/source/CT.csv', index=False)
     pd.DataFrame(data=Files.get_files_list('data/source/NonCT/'), columns=['image_name']).to_csv('data/source/NonCT.csv', index=False)
+    pd.DataFrame(data=Files.get_files_list('data/source/TrashCT/'), columns=['image_name']).to_csv('data/source/TrashCT.csv', index=False)
 def prepare_classification_datasets():
     parameters = yaml.safe_load(open('data/parameters.yaml'))
     ct = Dataset.shuffle_list('data/source/CT.csv')
     non_ct = Dataset.shuffle_list('data/source/NonCT.csv')
+    trash_ct = Dataset.shuffle_list('data/source/TrashCT.csv')
     data = []
+    j = 0
     for i in range(parameters['classification']['n_samples']):
-        if i % 2 == 0:
-            data.append([os.path.join('data/source/NonCT', non_ct.pop()), 0])
-        else:
-            data.append([os.path.join('data/source/CT', ct.pop()), 1])
-        if len(non_ct) == 0 or len(ct) == 0:
+        j += 3
+        data.append([os.path.join('data/source/NonCT', non_ct.pop()), 0])
+        data.append([os.path.join('data/source/CT', ct.pop()), 1])
+        data.append([os.path.join('data/source/TrashCT', trash_ct.pop()), 2])
+        if len(trash_ct) == 0 or len(non_ct) == 0 or len(ct) == 0 or (j+3) >= parameters['classification']['n_samples']:
             break
     df = pd.DataFrame(data, columns=['image_name', 'class'])
     train_df, test_df = Dataset.split_dataset(df, parameters['classification']['test_size'])
@@ -122,14 +125,11 @@ def train_classification_model():
         ConfusionMatrixDisplay.from_predictions(true, pred, colorbar=False, ax=ax)
         f.savefig('confusion_matrix.png')
         mlflow.log_artifact('confusion_matrix.png')
-        
-        f, ax = plt.subplots()
-        plt.plot([0, 1], [0, 1], linestyle="--")
-        RocCurveDisplay.from_predictions(true, pred, ax=ax)
-        f.savefig('roc_curve.png')
-        mlflow.log_artifact('roc_curve.png')
 
         mlflow.log_artifact('./plugins/classification_model.py')
+
+        model.save('classifier.h5')
+        mlflow.log_artifact('classifier.h5')
         
         mlflow.keras.log_model(keras_model=model, artifact_path='classification_models')
         mlflow.end_run()
@@ -142,6 +142,7 @@ def clear_classification_files():
         os.remove(f'data/classification/test/{path}')
     for path in os.listdir('data/classification/train/'):
         os.remove(f'data/classification/train/{path}')
+
 with airflow.DAG(
     'classification',
     default_args={
