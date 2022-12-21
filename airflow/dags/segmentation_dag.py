@@ -165,6 +165,7 @@ def clear_segmentation_files():
         os.remove(f'data/segmentation/test/MASK/{path}')
     for path in os.listdir('data/segmentation/train/MASK/'):
         os.remove(f'data/segmentation/train/MASK/{path}')
+
 with airflow.DAG(
     'segmentation',
     default_args={
@@ -178,16 +179,28 @@ with airflow.DAG(
         task_id='generate_images_lists',
         python_callable=generate_images_lists,
     )
-    PrepareClassificationDatasets = PythonOperator(
+    PrepareSegmentationDatasets = PythonOperator(
         task_id='prepare_datasets',
         python_callable=prepare_segmentation_datasets,
     )
-    LoadClassificationDatasets = PythonOperator(
+    LoadSegmentationDatasets = PythonOperator(
         task_id='load_datasets',
         python_callable=load_segmentation_datasets,
     )
-    TrainClassificationModel = PythonOperator (
+    ClaheSegmentationDatasets = PythonOperator(
+        task_id='clahe_dataset',
+        python_callable=clahe_segmentation_datasets,
+    )
+    GenerateSegmentationDatasets = PythonOperator(
+        task_id='generate_datasets',
+        python_callable=generate_segmentation_datasets,
+    )
+    TrainSegmentationModel = PythonOperator (
         task_id='train_model',
         python_callable=train_segmentation_model,
     )
-    GenerateImagesLists >> PrepareClassificationDatasets >> LoadClassificationDatasets >> TrainClassificationModel
+    ClearRunFiles = PythonOperator (
+        task_id='clear_files',
+        python_callable=clear_segmentation_files,
+    )
+    GenerateImagesLists >> PrepareSegmentationDatasets >> LoadSegmentationDatasets >> ClaheSegmentationDatasets >> GenerateSegmentationDatasets >> TrainSegmentationModel >> ClearRunFiles
