@@ -12,7 +12,6 @@ from files import Files
 from dataset import Dataset
 import classification_model
 
-from sklearn.metrics import RocCurveDisplay
 from sklearn.metrics import classification_report
 from sklearn.metrics import ConfusionMatrixDisplay
 from airflow.operators.python import PythonOperator
