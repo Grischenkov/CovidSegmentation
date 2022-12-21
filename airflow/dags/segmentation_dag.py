@@ -1,4 +1,5 @@
 import os
+import cv2
 import yaml
 import airflow
 import numpy as np
@@ -52,6 +53,21 @@ def load_segmentation_datasets():
     Files.save_images(test_ct_images, ct_test_df, 'data/segmentation/test/CT/')
     Files.save_images(train_masks_images, masks_train_df, 'data/segmentation/train/MASK/')
     Files.save_images(test_masks_images, masks_test_df, 'data/segmentation/test/MASK/')
+def clahe_segmentation_datasets():
+    params = yaml.safe_load(open('data/parameters.yaml'))
+    if params['segmentation']['use_clahe'] == False:
+        return
+    ct_train_df = pd.read_csv('data/segmentation/ct_train_df.csv')
+    ct_test_df = pd.read_csv('data/segmentation/ct_test_df.csv')
+    train_ct_images = np.array(Files.load_images(ct_train_df, 'data/segmentation/train/CT/'))
+    test_ct_images = np.array(Files.load_images(ct_test_df, 'data/segmentation/test/CT/'))
+    clahe = cv2.createCLAHE(clipLimit=7.0)
+    for i in range(len(train_ct_images)):
+        train_ct_images[i] = clahe.apply(train_ct_images[i])
+    for i in range(len(test_ct_images)):
+        test_ct_images[i] = clahe.apply(test_ct_images[i])
+    Files.save_images(train_ct_images, ct_train_df, 'data/segmentation/train/CT/')
+    Files.save_images(test_ct_images, ct_test_df, 'data/segmentation/test/CT/')
 def train_segmentation_model():
     pass
 
