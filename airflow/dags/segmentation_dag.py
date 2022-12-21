@@ -148,7 +148,23 @@ def train_segmentation_model():
 
         mlflow.keras.log_model(keras_model=model, artifact_path='segmentation_models')
         mlflow.end_run()
-
+def clear_segmentation_files():
+    os.remove('data/segmentation/ct_train_df.csv')
+    os.remove('data/segmentation/ct_test_df.csv')
+    os.remove('data/segmentation/masks_train_df.csv')
+    os.remove('data/segmentation/masks_test_df.csv')
+    os.remove('data/segmentation/train/X_train.npy')
+    os.remove('data/segmentation/train/Y_train.npy')
+    os.remove('data/segmentation/test/X_test.npy')
+    os.remove('data/segmentation/test/Y_test.npy')
+    for path in os.listdir('data/segmentation/test/CT/'):
+        os.remove(f'data/segmentation/test/CT/{path}')
+    for path in os.listdir('data/segmentation/train/CT/'):
+        os.remove(f'data/segmentation/train/CT/{path}')
+    for path in os.listdir('data/segmentation/test/MASK/'):
+        os.remove(f'data/segmentation/test/MASK/{path}')
+    for path in os.listdir('data/segmentation/train/MASK/'):
+        os.remove(f'data/segmentation/train/MASK/{path}')
 with airflow.DAG(
     'segmentation',
     default_args={
