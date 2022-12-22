@@ -1,6 +1,7 @@
 import os
 import cv2
 import yaml
+import random
 import mlflow
 import airflow
 import numpy as np

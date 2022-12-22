@@ -38,7 +38,7 @@ def model() :
     x = Conv2D(128, (3, 3), activation='relu', padding='same', kernel_initializer="he_normal") (x) 
 
     x = Conv2DTranspose(64, (2, 2), padding='same') (x)
-    x = concatenate([x, x_1])
+    x = concatenate([x, x_2])
     x = Conv2D(64, (3, 3), activation='relu', padding='same', kernel_initializer="he_normal") (x)
     x = Conv2D(64, (3, 3), activation='relu', padding='same', kernel_initializer="he_normal") (x)
 
