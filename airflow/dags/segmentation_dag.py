@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 from files import Files
 from dataset import Dataset
+import segmentation_model
 
 from airflow.operators.python import PythonOperator
 
